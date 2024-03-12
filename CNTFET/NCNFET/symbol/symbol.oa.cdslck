@@ -1,0 +1,16 @@
+#
+# Edit Lock-Stake file. CAUTION: Please do not change.
+#
+# Information about current Edit Lock Owner.
+#
+LockStakeVersion               1.1
+LoginName                      work
+HostName                       work-eda
+ProcessIdentifier              3400
+ProcessCreationTime_UTC        1703098502
+ProcessCreationTime_Readable   Thu Dec 21 02:55:02 2023 CST
+AppIdentifier                  OA File System Design Manager
+OSType                         unix
+ReasonForPlacingEditLock       OpenAccess edit lock
+FilePathUsedToEditLock         /home/work/Desktop/CNTFET/NCNFET/symbol/symbol.oa.cdslck
+TimeEditLocked                 Thu Dec 21 03:02:34 2023 CST

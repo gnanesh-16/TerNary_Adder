@@ -1,0 +1,9 @@
+// VerilogA for CNTFET, PCNFET, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module PCNFET;
+
+
+endmodule
