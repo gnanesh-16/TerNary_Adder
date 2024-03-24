@@ -1,0 +1,380 @@
+/*******************************************************************
+ Carbon Nanotube Field Effect Transistors
+             VerilogA Models
+	       Version 2.1.1 
+
+   
+   Copyright The Board Trustees of the Leland Stanford Junior University 2007
+   Albert Lin, Gordon Wan, Jie Deng, Prof. H-S Philip Wong
+
+
+   02/02/2008 Last Modified by Albert Lin.
+
+   Carbon Nanotube Field Effect Transistors Verilog-A implementation
+   based on 
+   "A Circuit-Compatible SPICE model for Enhancement Mode Carbon 
+   Nanotube Field Effect Transistors" by Jie Deng and H-S Philip Wong 
+
+   Patent Pending.
+   
+   Model name: NCNFET_L2.va
+*******************************************************************/
+
+/*******************************************************************
+* TERMS OF USE
+* Stanford Leland Junior University and the authors ("Stanford") 
+* provide these model files to you subject to the Terms of Use, 
+* which may be updated by us from time to time without notice to you.
+* The most up-to-date Terms of Use can be found at
+* http://www.stanford.edu/group/nanoelectronics/model_downloads.htm
+*******************************************************************/
+
+/*******************************************************************
+*
+* N-CNFET Level 2 Sub-circuit Definition
+* (Please use the top level models.)
+*******************************************************************/
+`include "disciplines.vams"
+`include "NCNFET_L1.va"
+
+module NCNFET_L2(Drain,Gate,Source,Sub,CoupleNode);
+    
+	// Input variables definitions
+    	parameter real Lch=`L_channel;
+    	parameter real Lgeff = `Lceff;
+    	parameter real Lss=`L_sd;
+    	parameter real Ldd=`L_sd;
+    	parameter real Efi=0.6;
+    	parameter real Kgate=16;
+    	parameter real Tox=4.0e-9;
+    	parameter real Csub=0.0;
+    	parameter real Ccsd=0.0;
+    	parameter real CoupleRatio=0.0;
+    	parameter real Vfbn=0.0;
+    	parameter real Dout=1;
+    	parameter real Sout=1;
+    	parameter real GF=0;
+    	parameter real Pitch=20.0e-9;
+    	parameter real n1=19;
+    	parameter real n2=0;
+	parameter real CNTPos=1;
+    
+    	// Electrical connections
+    	inout Drain, Gate, Source, Sub, CoupleNode;
+    	electrical Drain, Gate, Source, Sub, CoupleNode, Drain_b, Drain_ch, Drain_L1, Source_b, Source_L1;
+    
+    	/********************************************
+     	****** 0. Bias Conditions *******************
+     	********************************************/
+    	real v_ddrn;         // V(Drain_b,Drain)
+    	real v_ddin;         // V(Drain_b,Drain_ch)
+    	real v_ssrc;         // V(Source_b,Source)
+    	real v_sins;         // V(Source_L1,Source_b)
+    	real v_dinsin;       // V(Drain_ch,Source_L1)
+     
+   	/********************************************
+    	********* Parameters definition  ************
+    	********************************************/
+    	// The energy of the perpendicular component of the mth sub-band, above Ei
+    	real E1, E2;
+    
+    	// The quantum contact resistance
+    	real Ef0;
+    	real flag1, flag2;
+    	real Qo;
+    	real phib_max1, phib_max2;
+    	real diff_phib;
+    	real phib_max;
+    	real Vd_max;
+    	real phib_ratio;
+    
+    	// The total resistance at drain side
+    	real CoeffRd;
+    	real CoeffRs;
+    
+    	// The Schottky Barrier resistance
+    	real radius;
+    	real Ndopant;
+    	real Dcoeff;
+    
+    	// The minimum height of the tunneling barrier
+    	real Vbarrier1;
+    
+    	// The average tunneling probability through the ideal triangle tunneling region
+    	real Tuncoeff;
+    
+    	// Coupling capacitance between adjacent CNTs
+    	real dia;
+    	real Cc_cnt;
+    	real Cint;
+
+    	// Auxillary variables
+    	real Rc;
+        
+    	/***********************************************************
+     	*** Component values to be computed heavily ****************
+     	***********************************************************/
+    	real Rsbd;
+    	real Rd;
+    	real Cd1;
+    	real Cd2;
+    	real EDDin;
+    	real Rs;
+    	real Rsbs;
+    	real Cs1;
+    	real Cs2;
+    
+   	analog function real sgn;
+        	input x;
+        	real x;
+        	begin
+            	if (x>0.0) begin
+                		sgn=1.0;
+            	end else if (x<0.0) begin
+                		sgn=-1.0;
+            	end else begin
+                		sgn =0.0;
+                	end
+        	end
+    	endfunction //sgn
+
+	analog function real int;
+		input x;
+		real x;
+		integer temp1;
+		begin
+			temp1=x;
+			if (x>0) begin
+				if (temp1>x) begin
+					int =temp1-1.0;
+				end else begin
+					int =temp1;
+				end
+			end else begin
+				if (temp1<x) begin
+					int =temp1+1.0;
+				end else begin
+					int =temp1;
+				end
+			end
+		end
+	endfunction //int
+
+	analog function real hspsqrt;
+		input x;
+		real x;
+		begin
+			hspsqrt = sgn(x)*sqrt(abs(x));
+		end
+	endfunction //hspice version of sqrt
+
+	analog function real hspln;
+		input x;
+		real x;
+		begin
+			hspln = sgn(x)*ln(abs(x));
+		end
+	endfunction //hspice version of ln(x) [log(x)]
+	
+	analog function real hsppow;
+		input x,y;
+		real x,y;
+		begin
+			hsppow  = pow(x,int(y));
+		end
+	endfunction //hspice version of pow(x,y)
+
+    	// Instantiate the NCNFET_L1 model
+    	NCNFET_L1 #(.Lg(Lch),.Lgeff(Lgeff),.Lss(Lss),.Ldd(Ldd),.Efi(Efi),.Kgate(Kgate),.Tox(Tox),.Csub(Csub),.Ccsd(Ccsd),.CoupleRatio(CoupleRatio),.Vfbn(Vfbn),.n1(n1),.n2(n2),.GF(GF),.Pitch(Pitch),.CNTPos(CNTPos)) XNCNFET_L1 (Drain_L1, Gate, Source_L1, Sub, CoupleNode);
+    
+    	/*************************************************************************/
+    	analog begin
+    
+        	begin   // Assign basic parameters
+            		E1=`Vpi*`pi/hspsqrt(3.0*(hsppow(n1,2)+n1*n2+hsppow(n2,2)));
+            		E2=2.0*E1;
+            
+            		Ef0 = max(Efi,E1+0.01);
+            		flag1 = max(sgn(Ef0-E1),0.0);
+            		flag2 = max(sgn(Ef0-E2),0.0);
+            		Qo = 2.0*(hspsqrt(hsppow(Ef0,2)-hsppow(E1,2))*flag1+hspsqrt(hsppow(Ef0,2)-hsppow(E2,2))*flag2);
+            		phib_max1 = hspsqrt(hsppow(hsppow(E1,2)-hsppow(E2,2),2)+2.0*(hsppow(E1,2)+hsppow(E2,2))*hsppow(Qo,2)+hsppow(Qo,4))/(2.0*Qo)-Ef0; 
+            		phib_max2 = hspsqrt(hsppow(Qo,2)+hsppow(E1,2))-Ef0;
+            		diff_phib = phib_max2-phib_max1;
+            		phib_max=phib_max1*max(sgn(diff_phib),0.0)+phib_max2*max(sgn(-diff_phib),0.0);
+            		Vd_max=phib_max+Ef0-E1;
+            		phib_ratio=phib_max/Vd_max;
+            
+            		CoeffRd=Dout*(Ldd-`Leff+1.0e-12)/`Leff + (1.0-Dout)*Ldd/`Leff;
+            		CoeffRs=Lss/`Leff;
+
+            		radius=`a*hspsqrt(hsppow(n1,2)+n1*n2+hsppow(n2,2))/(2*`pi);
+            		Ndopant=0.2702/(hsppow(radius,2)*`Vpi*`d)*hspsqrt(hsppow(Ef0,2)-hsppow(E1,2));
+            		Dcoeff=hspsqrt(2.0*`Ksub*`epso/(`q*Ndopant));
+    
+            		Vbarrier1=max(`phi_M-`phi_S+E1,0.0);
+            
+            		Tuncoeff=-0.6285/(radius*hspsqrt(E1));
+    
+	    		dia = `a*hspsqrt(hsppow(n1,2)+n1*n2+hsppow(n2,2))/`pi;
+            		Cc_cnt = `Coeff_Cc/hspln(Pitch/dia+hspsqrt(hsppow(Pitch/dia,2)-1));
+	    		// Total coupling capacitance for source/drain region CNT
+	    		Cint = 0.5*(Csub+`Ccabove);        
+
+		end  // End: Assign basic parameters
+    
+        	begin // Get bias conditions
+            
+            		// Assign bias conditions
+            		v_ddrn = V(Drain_b,Drain);
+            		v_ddin = V(Drain_b,Drain_ch);
+            		v_ssrc = V(Source_b,Source);
+            		v_sins = V(Source_L1,Source_b);
+            		v_dinsin = V(Drain_ch,Source_L1);		
+            
+         	end // End: Get bias conditions
+            
+         	begin : evaluate_Rc
+            		real Vds;
+            		real Vbias;
+            		real delta_phib;
+            		real Coexp1, Coexp2;
+                       
+            		// Evaluate Vds
+            		Vds = max(abs(v_ddin)/CoeffRd,1.0e-9);
+          
+            		// Evaluate Vbias, delta_phib
+            		Vbias = max(min(Vds,Vd_max),1.0e-9);
+            		delta_phib = phib_ratio*Vbias;
+            
+            		// Evaluate Coexp1, Coexp2
+            		Coexp1 = exp((E1-Ef0-delta_phib)/`kT);
+            		Coexp2 = exp((E2-Ef0-delta_phib)/`kT);
+            
+            		// Evaluate Rc
+            		Rc = 1/((2+`kT/Vds*(hspln((1.0+Coexp1)/(1.0+Coexp1*exp(Vds/`kT)))+hspln((1.0+Coexp2)/(1.0+Coexp2*exp(Vds/`kT)))))*`coeffj);
+         	end // End: evaluate_Rc
+                 
+         	begin : evaluate_Rsbd   
+            		real Vsba, Vres, barrier;       
+            		real Vbias1, Vbias2;
+            		real delta_phib, c_delta_phib;
+            		real phi_barrier;
+            		real Vbi;
+            		real Wbarrier1, Wbarrier2, Vbarrier2;
+            		real Tavg;
+                                 
+            		// Parameters passing along
+            		Vsba = v_ddrn;
+            		Vres = v_ddin;
+            		barrier = 0;
+            
+            		// Evaluate Vbias
+            		Vbias1 = max(min((Vres/CoeffRs),Vd_max),1.0e-9);
+				Vbias2 = max(min((Vres/CoeffRd),Vd_max),1.0e-9);
+
+            		// Evaluate delta_phib, c_delta_phib
+            		delta_phib = phib_ratio*Vbias1;
+            		c_delta_phib = (1-phib_ratio)*Vbias2;
+            
+            		// Evaluate phi_barrier
+            		phi_barrier = Vsba + barrier*delta_phib - (1-barrier)*c_delta_phib;
+            
+            		// Evaluate Vbi
+            		Vbi = max(`phi_M-`phi_S+Ef0+phi_barrier,0);
+    
+            		// Evaluate Wbarrier1
+            		Wbarrier1 = Dcoeff*(hspsqrt(Vbi)-hspsqrt(Ef0-E1+phi_barrier));
+            
+            		// Evaluate Wbarrier2
+            		Wbarrier2 = Dcoeff*(hspsqrt(Vbi)-hspsqrt(Ef0-E1));
+            
+            		// Evaluate Vbarrier2
+            		Vbarrier2 = Vbarrier1+phi_barrier;
+            
+            		// Evaluate Tavg
+            		Tavg = (exp(Tuncoeff*Wbarrier1*hspsqrt(Vbarrier1))+exp(Tuncoeff*Wbarrier2*hspsqrt(Vbarrier2)))/2;
+            
+            		// Evaluate
+            		Rsbd = max((1.0/Tavg-1.0)*Rc*(1.0-Dout),1e-4);
+         	end // End: evaluate_Rsbd
+            
+         	// Evaluate Rd
+         	Rd = max(CoeffRd*Rc,1.0e-4);
+            
+         	// Evaluate Cd1, Cd2
+         	Cd1 = Ldd*Cint;
+         	Cd2 = Ldd*Cint;
+         
+	 	// Evaluate EDDin
+	 	EDDin = v_dinsin*Lch/(Lch+Lgeff);        
+
+		// Evaluate Rs
+         	Rs = max(Lss/`Leff*Rc,1.0e-4);
+         
+         	begin : evaluate_Rsbs
+            		real Vsba, Vres, barrier;       
+            		real Vbias1, Vbias2;
+            		real delta_phib, c_delta_phib;
+            		real phi_barrier;
+            		real Vbi;
+            		real Wbarrier1, Wbarrier2, Vbarrier2;
+            		real Tavg;
+            
+            		// Parameters passing along
+            		Vsba = v_ssrc;
+            		Vres = v_sins;
+            		barrier = 1;
+            
+            		// Evaluate Vbias
+            		Vbias1 = max(min((Vres/CoeffRs),Vd_max),1.0e-9);
+            		Vbias2 = max(min((Vres/CoeffRd),Vd_max),1.0e-9);
+            
+            		// Evaluate delta_phib, c_delta_phib
+            		delta_phib = phib_ratio*Vbias1;
+            		c_delta_phib = (1-phib_ratio)*Vbias2;
+            
+            		// Evaluate phi_barrier
+            		phi_barrier = Vsba + barrier*delta_phib - (1-barrier)*c_delta_phib;
+            
+            		// Evaluate Vbi
+            		Vbi = max(`phi_M-`phi_S+Ef0+phi_barrier,0);
+    
+            		// Evaluate Wbarrier1
+            		Wbarrier1 = Dcoeff*(hspsqrt(Vbi)-hspsqrt(Ef0-E1+phi_barrier));
+            
+            		// Evaluate Wbarrier2
+            		Wbarrier2 = Dcoeff*(hspsqrt(Vbi)-hspsqrt(Ef0-E1));
+            
+            		// Evaluate Vbarrier2
+            		Vbarrier2 = Vbarrier1+phi_barrier;
+            
+            		// Evaluate Tavg
+            		Tavg = (exp(Tuncoeff*Wbarrier1*hspsqrt(Vbarrier1))+exp(Tuncoeff*Wbarrier2*hspsqrt(Vbarrier2)))/2;
+            
+            		// Evaluate
+            		Rsbs = max((1.0/Tavg-1.0)*Rc*(1.0-Sout),1e-4);
+         	end // End: evaluate_Rsbs
+         
+         	// Evaluate Cs1, Cs2
+         	Cs1 = Lss*Cint;
+         	Cs2 = Lss*Cint;
+         
+         	// Placing components
+         	// Resistors
+         	V(Drain,Drain_b)      <+ Rsbd*I(Drain,Drain_b);
+         	V(Drain_b,Drain_ch)   <+ Rd*I(Drain_b,Drain_ch);
+         	V(Source_L1,Source_b) <+ Rs*I(Source_L1,Source_b);
+         	V(Source_b,Source)    <+ Rsbs*I(Source_b,Source);
+         
+         	// Capacitors
+         	I(Drain_b,Sub)        <+ ddt(Cd1*V(Drain_b,Sub));
+         	I(Drain_ch,Sub)       <+ ddt(Cd2*V(Drain_ch,Sub));
+         	I(Source_b,Sub)       <+ ddt(Cs1*V(Source_b,Sub));
+	 	I(Source_L1,Sub)      <+ ddt(Cs2*V(Source_L1,Sub));
+         
+	 	// Voltage Controlled source
+	 	V(Drain_ch,Drain_L1) <+ EDDin;
+         
+     	end // End: analog begin
+endmodule

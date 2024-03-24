@@ -1,0 +1,92 @@
+/*******************************************************************
+ Carbon Nanotube Field Effect Transistors
+             VerilogA Models
+	       Version 2.1.1 
+
+   
+   Copyright The Board Trustees of the Leland Stanford Junior University 2007
+   Albert Lin, Gordon Wan, Jie Deng, Prof. H-S Philip Wong
+
+
+   02/02/2008 Last Modified by Albert Lin.
+
+   Carbon Nanotube Field Effect Transistors Verilog-A implementation
+   based on 
+   "A Circuit-Compatible SPICE model for Enhancement Mode Carbon 
+   Nanotube Field Effect Transistors" by Jie Deng and H-S Philip Wong 
+
+   Patent Pending.
+   
+   File name: parameters.vams
+*******************************************************************/
+
+/*******************************************************************
+* TERMS OF USE
+* Stanford Leland Junior University and the authors ("Stanford") 
+* provide these model files to you subject to the Terms of Use, 
+* which may be updated by us from time to time without notice to you.
+* The most up-to-date Terms of Use can be found at
+* http://www.stanford.edu/group/nanoelectronics/model_downloads.htm
+*******************************************************************/
+
+`define TEMP 27.0					// Temperature of operation
+
+/***Natural Constants: Do not change!***/
+`define q 1.60e-19                		// Electronic charge
+`define Vpi 3.033                 		// The carbon PI-PI bond energy
+`define d 0.144e-9                		// The carbon PI-PI bond distance
+`define a 0.2495e-9               		// The carbon atom distance
+`define pi 3.1416                 		// PI, constant
+`define h 6.63e-14                		// Planck constant,X1e20
+`define h_ba 1.0552e-14           		// h_bar, X1e20
+`define k 8.617e-5                		// Boltzmann constant
+`define epso 8.85e-12             		// Dielectric constant in vacuum
+`define kT (`k*(`TEMP+273))     		// The KT constant
+
+
+/***Parameters Available to Users***/
+`define L_channel 32.0e-9           	// CNFET printed/physical channel length, assume 32nm for 32nm node technology
+`define Lceff 200.0e-9				// The mean free path in intrinsic CNT, estimated as 200nm
+`define L_sd 32.0e-9                	// n+CNT source/drain full length, 32nm, from gate edge to S/D metal contact edge
+`define Efo 0.6	                   	// The n+/p+ doped CNT fermi level (eV), 0.66eV for 1% doping level, 0.6eV for 0.8% doping level
+`define Kox 16.0 					// The dielectric constant of high-K gate oxide
+`define Ccsd 0.0e-12				// The coupling capacitance between channel region and source/drain islands
+`define CoupleRatio 0.0				// The percentage of coupling capacitance between channel and drain out of the total fringe capacitance Ccsd
+`define sub_pitch 6.4e-9          		// Sublithographic pitch (e.g. for CNT gate), 6.4nm
+
+`define Klowk 2.0                         // The dielectric constant of low-k material
+`define Ksub 4.0                  		// The dielectric constant of SiO2
+`define Ld_par 15.0e-9              		// Length of the drain CNT,1 MFP of OP scattering, to calculate parasitic diffusion capacitance
+`define lambda_op 15.0e-9           	// The Optical Phonon backscattering mean-free-path with Metallic CNT,15nm
+`define lambda_ap 500.0e-9          	// The Acoustic Phonon backscattering mean-free-path with Metallic CNT, 500nm
+`define photon 0.16               		// The photon energy, typical value 0.16eV
+`define L_relax 40.0e-9             	// delta_Vds relaxation range at drain side, fitting parameter
+
+`define Leff 15.0e-9				// The mean free path in p+/n+ doped CNT, estimated as 15nm
+`define phi_M 4.6                 		// Metal workfunction
+`define phi_S 4.5                 		// CNT workfunction 
+
+
+/***Internal Model Parameters/Values: Do not change/advanced users only!***/
+`define Cgsub 30e-12              		// Metal gate (W) to Substrate fringe capacitance per unit length,approximated as 30af/um, with 10um thick Si02
+`define Cgabove 27e-12            		// W local interconnect to M1 coupling capacitance, 500nm apart, infinite large plane 
+`define Cc_cnt 26e-12             		// The coupling capacitance between CNTs with 2Fs=6.4nm, about 26pF/m
+`define Ccabove 15e-12            		// Coupling capacitance between CNT and the above M1 layer, 500nm apart
+`define Cc_gate 78e-12            		// The coupling capacitance between gates with 2F=64nm, about 78pF/m, W=32nm, H=64nm, contact spacing 32nm
+`define Ctot (`Cgsub+`Cgabove+`Cc_gate+`Cc_gate)	// total coupling capacitance for gate region
+`define Cint (0*`Cc_cnt+0.5*(`Cgsub+`Ccabove))  	// total coupling capacitance for source/drain region CNT, redefined within models
+`define Coeff1_Cgsd 10.54e-12 		// The slope for Cg_sd vs. Lsd, H=64nm, Klowk=2, contact spacing 32nm, valid for 10nm<Lsd<100nm 
+`define Coeff2_Cgsd 0.28e-18      		//The intersection of Cg_sd vs. Lsd, H=64nm, Klowk=2, contact spacing 32nm, valid for 10nm<Lsd<100nm 
+                          
+`define Rsub 1.0                    	// Substrate resistance, set to zero for the ideal case
+`define Rcnt 3.3e3                		// n+ CNT resistance due to finite modes, 3.3K for 0.7eV doped n+CNT
+`define FacR 0.4                  		// The factor of Rus/Rcnt
+`define de_fac 4.0                  	// the factor to calculate the number of electrons in CNT
+
+`define Lgmax 100.0e-9              	// The maximum channel length to calculate current for short channel device
+`define coeffj (4*`q/`h*`q/1e-20)   	// The coefficient of current component, 4 is due to both spin degeneracy and mode degeneracy
+`define Coeff_Cc (`pi*`Klowk*`epso) 	// The coefficient of the coupling capacitance between adjacent CNTs
+
+`define Rus (`Rcnt*`FacR)           	// Source side contact resistance
+`define Rud (`Rcnt*(1-`FacR))       	// Drain side contact resistance
+
